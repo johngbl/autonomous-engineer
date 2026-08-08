@@ -1,0 +1,32 @@
+# Autonomous Engineer Meta-Skill Repository
+# Modeling the hygiene we preach.
+
+# Temporary scratchpad & audit artifacts
+.tmp/
+audit-ui/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node (if any tooling is installed locally)
+node_modules/
+
+# Environment & secrets (never commit)
+.env
+.env.*
+*.pem
+*.key
+
+# Build artifacts
+dist/
+build/
+out/
