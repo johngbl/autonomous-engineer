@@ -1,0 +1,84 @@
+# =============================================================================
+# Structural Integrity Gate
+#
+# Validates the SKILL.md structure on any PR that touches it.
+# =============================================================================
+
+name: Integrity Gate
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'SKILL.md'
+      - '.github/workflows/evals.yml'
+      - 'README.md'
+  pull_request:
+    paths:
+      - 'SKILL.md'
+      - '.github/workflows/evals.yml'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  structural-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify SKILL.md has all 4 sections
+        run: |
+          EXPECTED_SECTIONS=4
+          ACTUAL_SECTIONS=$(grep -c '^## SECTION' SKILL.md)
+          if [ "$ACTUAL_SECTIONS" -ne "$EXPECTED_SECTIONS" ]; then
+            echo "SKILL.md must have exactly $EXPECTED_SECTIONS sections, found $ACTUAL_SECTIONS"
+            exit 1
+          fi
+          echo "SKILL.md has $ACTUAL_SECTIONS sections."
+
+      - name: Verify SKILL.md has all 2 appendices
+        run: |
+          EXPECTED_APPENDICES=2
+          ACTUAL_APPENDICES=$(grep -c '^## APPENDIX' SKILL.md)
+          if [ "$ACTUAL_APPENDICES" -ne "$EXPECTED_APPENDICES" ]; then
+            echo "SKILL.md must have exactly $EXPECTED_APPENDICES appendices, found $ACTUAL_APPENDICES"
+            exit 1
+          fi
+          echo "SKILL.md has $ACTUAL_APPENDICES appendices."
+
+      - name: Verify SKILL.md frontmatter is valid
+        run: |
+          FRONTMATTER=$(awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {exit} fm {print}' SKILL.md)
+          if [ -z "$FRONTMATTER" ]; then echo "No frontmatter block found"; exit 1; fi
+          echo "$FRONTMATTER" | grep -q '^name: autonomous-engineer' || { echo "Missing or wrong name in frontmatter"; exit 1; }
+          echo "$FRONTMATTER" | grep -q '^description:' || { echo "Missing description in frontmatter"; exit 1; }
+          echo "$FRONTMATTER" | grep -q '^triggers:' || { echo "Missing triggers in frontmatter"; exit 1; }
+
+      - name: Verify self-containment (no external file dependencies)
+        run: |
+          # SKILL.md should not require any external files to function
+          if grep -qE 'registry/(mcp|domain|design|memory)' SKILL.md; then
+            echo "SKILL.md references external registry files"
+            exit 1
+          fi
+          if grep -qE 'templates/(AGENTS|SPEC|eval)' SKILL.md; then
+            echo "SKILL.md references external template files"
+            exit 1
+          fi
+          echo "Self-containment verified."
+
+      - name: Verify critical rules are present (semantic check)
+        run: |
+          MISSING=0
+          for KEYWORD in "Circuit Breaker" "Deletion Rule" "Anti-Guessing" "Untrusted Content" "Definition of Done" "Anti-Sycophancy" "Sandbox Integrity" "Procedural Memory" "REMOTE PUSH SAFETY LOCK"; do
+            if ! grep -qi "$KEYWORD" SKILL.md; then
+              echo "MISSING critical keyword: $KEYWORD"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ "$MISSING" -gt 0 ]; then
+            echo "$MISSING critical keywords missing from SKILL.md"
+            exit 1
+          fi
+          echo "All critical keywords present."
